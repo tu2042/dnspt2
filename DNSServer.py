@@ -5,7 +5,6 @@ import dns.rdtypes
 import dns.rdtypes.ANY
 from dns.rdtypes.ANY.MX import MX
 from dns.rdtypes.ANY.SOA import SOA
-from dns.rdtypes.ANY.TXT import TXT
 import dns.rdata
 import socket
 import threading
@@ -35,13 +34,13 @@ def generate_aes_key(password, salt):
 def encrypt_with_aes(input_string, password, salt):
     key = generate_aes_key(password, salt)
     f = Fernet(key)
-    encrypted_data = f.encrypt(input_string.encode('utf-8')) # call the Fernet encrypt method
+    encrypted_data = f.encrypt(input_string.encode('utf-8')) #call the Fernet encrypt method
     return encrypted_data
 
 def decrypt_with_aes(encrypted_data, password, salt):
     key = generate_aes_key(password, salt)
     f = Fernet(key)
-    decrypted_data = f.decrypt(encrypted_data) # call the Fernet decrypt method
+    decrypted_data = f.decrypt(encrypted_data) #call the Fernet decrypt method
     return decrypted_data.decode('utf-8')
 
 salt = b'Tandon' # Remember it should be a byte-object
@@ -130,17 +129,18 @@ def run_dns_server():
                     mname, rname, serial, refresh, retry, expire, minimum = answer_data # What is the record format? See dns_records dictionary. Assume we handle @, Class, TTL elsewhere. Do some research on SOA Records
                     rdata = SOA(dns.rdataclass.IN, dns.rdatatype.SOA, mname, rname, serial, refresh, retry, expire, minimum) # follow format from previous line
                     rdata_list.append(rdata)
-                elif qtype == dns.rdatatype.TXT:
-                    if isinstance(answer_data, tuple) or isinstance(answer_data, list):
-                        txt_strings = [s.encode('utf-8') if isinstance(s, str) else s for s in answer_data]
-                    else:
-                        txt_strings = [answer_data.encode('utf-8') if isinstance(answer_data, str) else answer_data]
-                    rdata_list.append(TXT(dns.rdataclass.IN, dns.rdatatype.TXT, txt_strings))
                 else:
                     if isinstance(answer_data, str):
-                        rdata_list = [dns.rdata.from_text(dns.rdataclass.IN, qtype, answer_data)]
+                        txt_val = f'"{answer_data}"' if qtype == dns.rdatatype.TXT and not answer_data.startswith('"') else answer_data
+                        rdata_list = [dns.rdata.from_text(dns.rdataclass.IN, qtype, txt_val)]
                     else:
-                        rdata_list = [dns.rdata.from_text(dns.rdataclass.IN, qtype, data) for data in answer_data]
+                        formatted_data = []
+                        for data_item in answer_data:
+                            if qtype == dns.rdatatype.TXT and isinstance(data_item, str) and not data_item.startswith('"'):
+                                formatted_data.append(f'"{data_item}"')
+                            else:
+                                formatted_data.append(data_item)
+                        rdata_list = [dns.rdata.from_text(dns.rdataclass.IN, qtype, data_item) for data_item in formatted_data]
                 for rdata in rdata_list:
                     response.answer.append(dns.rrset.RRset(question.name, dns.rdataclass.IN, qtype))
                     response.answer[-1].add(rdata)
