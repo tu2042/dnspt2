@@ -34,13 +34,13 @@ def generate_aes_key(password, salt):
 def encrypt_with_aes(input_string, password, salt):
     key = generate_aes_key(password, salt)
     f = Fernet(key)
-    encrypted_data = f.encrypt(input_string.encode('utf-8')) #call the Fernet encrypt method
+    encrypted_data = f.encrypt(input_string.encode('utf-8')) # call the Fernet encrypt method
     return encrypted_data
 
 def decrypt_with_aes(encrypted_data, password, salt):
     key = generate_aes_key(password, salt)
     f = Fernet(key)
-    decrypted_data = f.decrypt(encrypted_data) #call the Fernet decrypt method
+    decrypted_data = f.decrypt(encrypted_data) # call the Fernet decrypt method
     return decrypted_data.decode('utf-8')
 
 salt = b'Tandon' # Remember it should be a byte-object
@@ -89,7 +89,7 @@ dns_records = {
     },
     'nyu.edu.': {
         dns.rdatatype.A: '192.168.1.106',
-        dns.rdatatype.TXT: (encrypted_value.decode('utf-8'),),
+        dns.rdatatype.TXT: (str(encrypted_value),),
         dns.rdatatype.MX: [(10, 'mxa-00256a01.gslb.pphosted.com.')],
         dns.rdatatype.AAAA: '2001:0db8:85a3:0000:0000:8a2e:0373:7312',
         dns.rdatatype.NS: 'ns1.nyu.edu.',
@@ -131,16 +131,9 @@ def run_dns_server():
                     rdata_list.append(rdata)
                 else:
                     if isinstance(answer_data, str):
-                        txt_val = f'"{answer_data}"' if qtype == dns.rdatatype.TXT and not answer_data.startswith('"') else answer_data
-                        rdata_list = [dns.rdata.from_text(dns.rdataclass.IN, qtype, txt_val)]
+                        rdata_list = [dns.rdata.from_text(dns.rdataclass.IN, qtype, answer_data)]
                     else:
-                        formatted_data = []
-                        for data_item in answer_data:
-                            if qtype == dns.rdatatype.TXT and isinstance(data_item, str) and not data_item.startswith('"'):
-                                formatted_data.append(f'"{data_item}"')
-                            else:
-                                formatted_data.append(data_item)
-                        rdata_list = [dns.rdata.from_text(dns.rdataclass.IN, qtype, data_item) for data_item in formatted_data]
+                        rdata_list = [dns.rdata.from_text(dns.rdataclass.IN, qtype, data) for data in answer_data]
                 for rdata in rdata_list:
                     response.answer.append(dns.rrset.RRset(question.name, dns.rdataclass.IN, qtype))
                     response.answer[-1].add(rdata)
